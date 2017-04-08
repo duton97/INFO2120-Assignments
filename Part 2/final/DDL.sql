@@ -1,0 +1,143 @@
+BEGIN TRANSACTION;
+	DROP TABLE IF EXISTS public.CarModel CASCADE;
+	DROP TABLE IF EXISTS public.CarBay CASCADE;
+	DROP TABLE IF EXISTS public.MembershipPlan CASCADE;
+	DROP TABLE IF EXISTS public.Car CASCADE;
+	DROP TABLE IF EXISTS public.Member CASCADE;
+	DROP TABLE IF EXISTS public.Phone CASCADE;
+	DROP TABLE IF EXISTS public.Booking CASCADE;
+	DROP TABLE IF EXISTS public.PaymentMethod CASCADE;
+	DROP TABLE IF EXISTS public.BankAccount CASCADE;
+	DROP TABLE IF EXISTS public.PayPal CASCADE;
+	DROP TABLE IF EXISTS public.CreditCard CASCADE;
+	DROP SCHEMA IF EXISTS A2 CASCADE;
+COMMIT;
+
+BEGIN TRANSACTION;
+
+CREATE SCHEMA A2;
+
+SET search_Path = '$user', public, A2;
+
+CREATE TABLE A2.CarModel (
+	make		VARCHAR(20),
+	model		VARCHAR(20),
+	category	VARCHAR(20) NOT NULL,
+	capacity	INTEGER NOT NULL,
+	PRIMARY KEY (make, model)
+);
+
+CREATE TABLE A2.CarBay (
+	name			VARCHAR(50),
+	address			VARCHAR(50) NOT NULL,
+	description		VARCHAR(50),
+	latitude		REAL NOT NULL,
+	longitude		REAL NOT NULL,
+	PRIMARY KEY (name)
+);
+
+CREATE TABLE A2.MembershipPlan (
+	title				VARCHAR(20),
+	monthly_fee			MONEY NOT NULL,
+	hourly_rate			MONEY NOT NULL,
+	km_rate				MONEY NOT NULL,
+	daily_rate			MONEY,
+	daily_km_rate		MONEY,
+	daily_km_included	INTEGER,
+	PRIMARY KEY (title)
+);
+
+CREATE TABLE A2.Car (
+	regno			VARCHAR(10),
+	name			VARCHAR(20) UNIQUE NOT NULL,
+	year			INTEGER NOT NULL,
+	transmission	VARCHAR(10) NOT NULL,
+	make			VARCHAR(20),
+	model			VARCHAR(20),
+	carBayName		VARCHAR(50),
+	PRIMARY KEY (regno),
+	FOREIGN KEY (make,model) REFERENCES CarModel(make,model) ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (carBayName) REFERENCES CarBay(name) ON UPDATE CASCADE ON DELETE RESTRICT,
+	CONSTRAINT Year_CHK CHECK (year <= 2016),
+	CONSTRAINT Transmission_CHK CHECK (transmission IN ('manual','automatic'))
+);
+
+/*CREATE ASSERTION year_is_valid CHECK (
+	NOT EXISTS (SELECT year FROM A2.Car WHERE year > 2016)
+)*/
+
+CREATE TABLE A2.Member (
+	email			VARCHAR(30),
+	password		VARCHAR(30) NOT NULL,
+	title			VARCHAR(1) NOT NULL,
+	familyName		VARCHAR(20) NOT NULL,
+	givenName		VARCHAR(20) NOT NULL,
+	nr				VARCHAR(10) UNIQUE NOT NULL,
+	expires			VARCHAR NOT NULL,
+	address			VARCHAR(50) NOT NULL,
+	birthdate		VARCHAR NOT NULL,
+	since			VARCHAR NOT NULL,
+	nickname		VARCHAR(20) UNIQUE,
+	planTitle		VARCHAR(20),
+	PRIMARY KEY (email),
+	FOREIGN KEY (planTitle) REFERENCES MembershipPlan(title) ON UPDATE CASCADE ON DELETE SET NULL,
+	CONSTRAINT Title_CHK CHECK (title IN ('M','F'))
+);
+
+/*CREATE ASSERTION since_is_valid CHECK (
+	NOT EXISTS (SELECT since FROM A2.Member WHERE since > 2016)
+)*/
+
+CREATE TABLE A2.Phone (
+	email		VARCHAR(30),
+	phone		INTEGER,
+	PRIMARY KEY (email,phone),
+	FOREIGN KEY (email) REFERENCES Member(email) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE A2.Booking (
+	date		VARCHAR,
+	hour		INTEGER,
+	duration	INTEGER NOT NULL,
+	CarRegno	VARCHAR(10),
+	email		VARCHAR(30),
+	PRIMARY KEY (date, hour),
+	FOREIGN KEY (CarRegno) REFERENCES Car(regno) ON UPDATE CASCADE ON DELETE SET NULL,
+	FOREIGN KEY (email) REFERENCES Member(email) ON UPDATE CASCADE ON DELETE CASCADE,
+	CONSTRAINT Duration_CHK CHECK (duration > 0)
+);
+
+CREATE TABLE A2.PaymentMethod (
+	num		INTEGER,
+	email	VARCHAR(30),
+	PRIMARY KEY (num),
+	FOREIGN KEY (email) REFERENCES Member(email) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE A2.BankAccount (
+	num			INTEGER,
+	name		VARCHAR(20) NOT NULL,
+	bsb			INTEGER NOT NULL,
+	account		INTEGER UNIQUE NOT NULL,
+	PRIMARY KEY (num),
+	FOREIGN KEY (num) REFERENCES PaymentMethod(num) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE A2.PayPal (
+	num		INTEGER,
+	email	VARCHAR(30) UNIQUE NOT NULL,
+	PRIMARY KEY (num),
+	FOREIGN KEY (num) REFERENCES PaymentMethod(num) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE A2.CreditCard (
+	num			INTEGER,
+	name		VARCHAR(20) NOT NULL,
+	brand		VARCHAR(20) NOT NULL,
+	expires		VARCHAR NOT NULL,
+	number		INTEGER UNIQUE NOT NULL,
+	PRIMARY KEY (num),
+	FOREIGN KEY (num) REFERENCES PaymentMethod(num) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+COMMIT;
